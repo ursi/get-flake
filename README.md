@@ -1,29 +1,17 @@
-# flake-compat
+# get-flake
+
+`builtins.getFlake` without the restrictions.
 
 ## Usage
 
 To use, add the following to your `flake.nix`:
 
 ```nix
-inputs.flake-compat = {
-  url = github:edolstra/flake-compat;
-  flake = false;
-};
+inputs.get-flake.url = "url = github:ursi/get-flake";
 ```
 
-Afterwards, create a `default.nix` file containing the following:
+Afterwards, you can use it to call a flake from anywhere, including a parent directory, as follows:
 
 ```nix
-(import
-  (
-    let lock = builtins.fromJSON (builtins.readFile ./flake.lock); in
-    fetchTarball {
-      url = "https://github.com/edolstra/flake-compat/archive/${lock.nodes.flake-compat.locked.rev}.tar.gz";
-      sha256 = lock.nodes.flake-compat.locked.narHash;
-    }
-  )
-  { src = ./.; }
-).defaultNix
+parent-flake = get-flake ../.;
 ```
-
-If you would like a `shell.nix` file, create one containing the above, replacing `defaultNix` with `shellNix`.

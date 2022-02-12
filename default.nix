@@ -1,11 +1,4 @@
-# Compatibility function to allow flakes to be used by
-# non-flake-enabled Nix versions. Given a source tree containing a
-# 'flake.nix' and 'flake.lock' file, it fetches the flake inputs and
-# calls the flake's 'outputs' function. It then returns an attrset
-# containing 'defaultNix' (to be used in 'default.nix'), 'shellNix'
-# (to be used in 'shell.nix').
-
-{ src, system ? builtins.currentSystem or "unknown-system" }:
+src:
 
 let
 
@@ -186,12 +179,4 @@ let
     else throw "lock file '${lockFilePath}' has unsupported version ${toString lockFile.version}";
 
 in
-  rec {
-    defaultNix =
-      result
-      // (if result ? defaultPackage.${system} then { default = result.defaultPackage.${system}; } else {});
-
-    shellNix =
-      defaultNix
-      // (if result ? devShell.${system} then { default = result.devShell.${system}; } else {});
-  }
+  result
