@@ -26,6 +26,7 @@ let
             ({ url = info.url; }
              // (if info ? rev then { inherit (info) rev; } else {})
              // (if info ? ref then { inherit (info) ref; } else {})
+             // (if info ? submodules then { inherit (info) submodules; } else {})
             );
         lastModified = info.lastModified;
         lastModifiedDate = formatSecondsSinceEpoch info.lastModified;
@@ -159,7 +160,8 @@ let
 
           outputs = flake.outputs (inputs // { self = result; });
 
-          result = outputs // sourceInfo // { inherit inputs; inherit outputs; inherit sourceInfo; };
+          result = outputs // sourceInfo // { inherit inputs; inherit outputs; inherit sourceInfo; _type = "flake"; };
+
         in
           if node.flake or true then
             assert builtins.isFunction flake.outputs;
