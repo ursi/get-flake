@@ -56,6 +56,15 @@ let
             );
         shortRev = builtins.substring 0 7 info.rev;
       }
+    else if info.type == "sourcehut" then
+      { inherit (info) rev narHash lastModified;
+        outPath =
+          fetchTarball
+            ({ url = "https://${info.host or "git.sr.ht"}/${info.owner}/${info.repo}/archive/${info.rev}.tar.gz"; }
+             // (if info ? narHash then { sha256 = info.narHash; } else {})
+            );
+        shortRev = builtins.substring 0 7 info.rev;
+      }
     else
       # FIXME: add Mercurial, tarball inputs.
       throw "flake input has unsupported input type '${info.type}'";
@@ -88,7 +97,20 @@ let
       then
         let res = builtins.fetchGit src;
         in if res.rev == "0000000000000000000000000000000000000000" then removeAttrs res ["rev" "shortRev"]  else res
-      else { outPath = src; };
+      else {
+        outPath =
+          # Massage `src` into a store path.
+          if builtins.isPath src
+          then
+            if dirOf (toString src) == builtins.storeDir
+            then
+              # If it's already a store path, don't copy it again.
+              builtins.storePath src
+            else
+              "${src}"
+          else
+            src;
+      };
     # NB git worktrees have a file for .git, so we don't check the type of .git
     isGit = builtins.pathExists (src + "/.git");
     isShallow = builtins.pathExists (src + "/.git/shallow");
@@ -133,7 +155,9 @@ let
 
           subdir = if key == lockFile.root then "" else node.locked.dir or "";
 
-          flake = import (sourceInfo + (if subdir != "" then "/" else "") + subdir + "/flake.nix");
+          outPath = sourceInfo + ((if subdir == "" then "" else "/") + subdir);
+
+          flake = import (outPath + "/flake.nix");
 
           inputs = builtins.mapAttrs
             (inputName: inputSpec: allNodes.${resolveInput inputSpec})
@@ -160,7 +184,20 @@ let
 
           outputs = flake.outputs (inputs // { self = result; });
 
-          result = outputs // sourceInfo // { inherit inputs; inherit outputs; inherit sourceInfo; _type = "flake"; };
+          result =
+            outputs
+            # We add the sourceInfo attribute for its metadata, as they are
+            # relevant metadata for the flake. However, the outPath of the
+            # sourceInfo does not necessarily match the outPath of the flake,
+            # as the flake may be in a subdirectory of a source.
+            # This is shadowed in the next //
+            // sourceInfo
+            // {
+              # This shadows the sourceInfo.outPath
+              inherit outPath;
+
+              inherit inputs; inherit outputs; inherit sourceInfo; _type = "flake";
+            };
 
         in
           if node.flake or true then
