@@ -1,5 +1,6 @@
-# get-flake
+As of Nix 2.35, `builtins.getFlake` supports using paths. Therefore, this library is deprecated.
 
+# get-flake
 `builtins.getFlake` without the restrictions.
 
 ## Usage
